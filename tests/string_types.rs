@@ -87,3 +87,15 @@ fn byte_pattern_applies_regardless_of_type() {
         json!({ "$schema": DRAFT4, "format": "byte", "pattern": "^[\\w\\d+\\/=]*$" }),
     );
 }
+
+#[test]
+fn valid_draft04_formats_pass_through() {
+    // These formats are already valid in draft-04. Each is returned with format
+    // unchanged and no minimum, maximum, or pattern added.
+    for fmt in ["email", "hostname", "ipv4", "ipv6", "uri", "uri-reference"] {
+        assert_schema_default(
+            json!({ "type": "string", "format": fmt }),
+            json!({ "$schema": DRAFT4, "type": "string", "format": fmt }),
+        );
+    }
+}
