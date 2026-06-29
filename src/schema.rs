@@ -36,10 +36,18 @@ fn convert_schema(schema: Value, options: &ResolvedOptions) -> Result<Value, Err
         schema = hook(schema, options);
     }
 
-    // Only objects carry the keywords below. Anything else passes through.
-    let Value::Object(_) = &schema else {
-        return Ok(maybe_after_transform(schema, options));
-    };
+    // Keyword processing reads object members. An array carries no keywords, so
+    // it passes through. A scalar or null is not a schema and stops conversion.
+    match &schema {
+        Value::Object(_) => {}
+        Value::Array(_) => return Ok(maybe_after_transform(schema, options)),
+        other => {
+            let rendered = serde_json::to_string(other).unwrap_or_default();
+            return Err(Error::InvalidInput(format!(
+                "schema must be an object, got {rendered}"
+            )));
+        }
+    }
 
     recurse_structs(&mut schema, options)?;
     convert_definition_keywords(&mut schema, options)?;

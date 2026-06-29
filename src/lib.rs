@@ -64,11 +64,13 @@ use serde_json::Value;
 /// Convert an OpenAPI 3.0 Schema Object to a JSON Schema draft-04 document.
 ///
 /// The root of the returned value carries `$schema`. The input is not mutated.
+/// The root must be an object or an array. An array passes through unchanged.
 ///
 /// # Errors
 ///
 /// Returns [`Error::InvalidType`] when strict mode is on and any node carries a
-/// `type` value outside the draft-04 type set.
+/// `type` value outside the draft-04 type set. Returns [`Error::InvalidInput`]
+/// when the root is a scalar or null.
 ///
 /// # Example
 ///
