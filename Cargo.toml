@@ -1,0 +1,10 @@
+[package]
+name = "openapi-to-json-schema"
+version = "0.1.0"
+edition = "2021"
+description = "Convert OpenAPI 3.0 schema objects to JSON Schema draft-04"
+license = "MIT"
+repository = "https://github.com/hey-jj/openapi-to-json-schema"
+readme = "README.md"
+
+[dependencies]
