@@ -1,0 +1,47 @@
+//! Array `items` as a single schema and as a tuple array.
+
+mod common;
+
+use common::{assert_schema_default, DRAFT4};
+use serde_json::json;
+
+#[test]
+fn items() {
+    assert_schema_default(
+        json!({
+            "type": "array",
+            "items": { "type": "string", "example": "2017-01-01T12:34:56Z" }
+        }),
+        json!({
+            "$schema": DRAFT4,
+            "type": "array",
+            "items": { "type": "string" }
+        }),
+    );
+}
+
+#[test]
+fn handles_items_with_invalid_values() {
+    assert_schema_default(
+        json!({
+            "type": "array",
+            "items": [
+                { "type": "string" },
+                2,
+                null,
+                { "type": "number" },
+                "foo",
+                { "type": "array" }
+            ]
+        }),
+        json!({
+            "$schema": DRAFT4,
+            "type": "array",
+            "items": [
+                { "type": "string" },
+                { "type": "number" },
+                { "type": "array" }
+            ]
+        }),
+    );
+}

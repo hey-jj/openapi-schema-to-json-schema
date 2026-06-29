@@ -1,0 +1,30 @@
+//! Fixture golden for a deeply nested schema.
+//!
+//! The source also checks that `cloneSchema: false` mutates the input in place.
+//! This crate owns its input, so there is no shared input to observe. The
+//! cloneSchema: false case is kept here as an output-equality assertion.
+
+mod common;
+
+use common::load_fixture;
+use openapi_to_json_schema::{from_schema, Options};
+
+#[test]
+fn complex_schema() {
+    let input = load_fixture("schema-1.json");
+    let expected = load_fixture("schema-1-expected.json");
+    let result = from_schema(input, &Options::new()).unwrap();
+    assert_eq!(result, expected);
+}
+
+#[test]
+fn converting_complex_schema_in_place() {
+    let input = load_fixture("schema-1.json");
+    let expected = load_fixture("schema-1-expected.json");
+    let options = Options {
+        clone_schema: Some(false),
+        ..Options::new()
+    };
+    let result = from_schema(input, &options).unwrap();
+    assert_eq!(result, expected);
+}
