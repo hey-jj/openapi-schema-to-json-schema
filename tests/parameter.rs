@@ -105,6 +105,35 @@ fn throwing_on_parameters_without_schemas() {
 }
 
 #[test]
+fn schema_wins_over_content() {
+    // A truthy schema is checked first, so content is ignored and the result is
+    // a single schema, not a MIME map.
+    let param = json!({
+        "schema": { "type": "integer" },
+        "content": { "application/json": { "schema": { "type": "string" } } }
+    });
+    let result = from_parameter(param, &Options::new()).unwrap();
+    assert_eq!(result, json!({ "type": "integer", "$schema": DRAFT4 }));
+}
+
+#[test]
+fn content_branch_copies_description() {
+    // A truthy description is copied onto each per-MIME schema. The outer map
+    // carries no $schema.
+    let param = json!({
+        "description": "d",
+        "content": { "application/json": { "schema": { "type": "string" } } }
+    });
+    let result = from_parameter(param, &Options::new()).unwrap();
+    assert_eq!(
+        result,
+        json!({
+            "application/json": { "type": "string", "$schema": DRAFT4, "description": "d" }
+        })
+    );
+}
+
+#[test]
 fn lenient_parameter_without_schema() {
     let param = json!({ "name": "parameter name", "in": "cookie" });
     let options = Options {
