@@ -299,8 +299,8 @@ fn convert_format(schema: &mut Value, options: &ResolvedOptions) {
         return;
     }
 
-    // Bounds computed as f64, matching the source `2 ** n` arithmetic. Large
-    // bounds are not exact integers, so a float Value is what JS produces.
+    // Bounds computed as f64, matching the `2 ** n` arithmetic. Integral bounds
+    // within i64 range serialize as integers, the rest as floats.
     match format.as_str() {
         "int32" => clamp_bounds(map, -(2f64.powi(31)), 2f64.powi(31) - 1.0),
         "int64" => clamp_bounds(map, -(2f64.powi(63)), 2f64.powi(63) - 1.0),
@@ -318,47 +318,45 @@ fn convert_format(schema: &mut Value, options: &ResolvedOptions) {
 
 /// Set or clamp `minimum` and `maximum` for a numeric format.
 ///
-/// For each bound the source guard is `(!value && value !== 0) || out of range`.
-/// A missing, null, or non-number value, or any falsy value other than 0, takes
-/// the bound. A present 0 is kept. A present number is clamped only when out of
-/// range.
+/// The JS guard per bound is `(!value && value !== 0) || out of range`. The
+/// helper below reads it as: write the bound when the current value is JS-falsy
+/// (and not the number 0) or when it is a number out of range. A present 0, a
+/// present in-range number, or any present non-number value is kept.
 fn clamp_bounds(map: &mut Map<String, Value>, min: f64, max: f64) {
-    let current_min = number_field(map, "minimum");
-    if falsy_not_zero(current_min) || current_min.map(|v| v < min).unwrap_or(false) {
-        map.insert("minimum".to_string(), float_value(min));
+    if take_bound(map.get("minimum"), |v| v < min) {
+        map.insert("minimum".to_string(), bound_value(min));
     }
-
-    let current_max = number_field(map, "maximum");
-    if falsy_not_zero(current_max) || current_max.map(|v| v > max).unwrap_or(false) {
-        map.insert("maximum".to_string(), float_value(max));
+    if take_bound(map.get("maximum"), |v| v > max) {
+        map.insert("maximum".to_string(), bound_value(max));
     }
 }
 
-/// Read a numeric field as f64. Returns None when missing or not a number.
-fn number_field(map: &Map<String, Value>, key: &str) -> Option<f64> {
-    match map.get(key) {
-        Some(Value::Number(n)) => n.as_f64(),
-        _ => None,
-    }
-}
-
-/// True when the value is falsy and not exactly 0, matching `!v && v !== 0`.
+/// Decide whether to overwrite a bound with the format default.
 ///
-/// A missing or non-number field counts as falsy and not 0, so it takes the
-/// bound. A present 0 is not falsy-and-not-zero, so it is kept. Among present
-/// numbers only NaN is both falsy and not equal to 0, but NaN cannot appear in
-/// JSON input.
-fn falsy_not_zero(value: Option<f64>) -> bool {
-    match value {
+/// `out_of_range` tests a present number against the format limit. A missing
+/// value, or a JS-falsy value other than the number 0, takes the default. A
+/// present non-number that is not falsy is kept, since the JS comparison
+/// coerces it and reads false.
+fn take_bound(current: Option<&Value>, out_of_range: impl Fn(f64) -> bool) -> bool {
+    match current {
         None => true,
-        Some(v) => v.is_nan(),
+        Some(Value::Number(n)) => match n.as_f64() {
+            Some(0.0) => false,
+            Some(v) => out_of_range(v),
+            None => false,
+        },
+        Some(other) => is_falsy(other),
     }
 }
 
-/// Build a float-valued JSON number so impl and goldens use the same Number
-/// representation. `from_f64` only fails for NaN or infinity, which the bounds
-/// never produce.
-fn float_value(v: f64) -> Value {
+/// Build a JSON number for a bound. An integral bound inside i64 range becomes
+/// an integer Number, so it serializes without a fractional part. Bounds beyond
+/// i64 range, such as the int64 maximum and the float and double limits, stay
+/// floats.
+fn bound_value(v: f64) -> Value {
+    if v.fract() == 0.0 && v >= -(2f64.powi(63)) && v < 2f64.powi(63) {
+        return Value::Number(Number::from(v as i64));
+    }
     Number::from_f64(v)
         .map(Value::Number)
         .unwrap_or(Value::Null)
@@ -431,21 +429,56 @@ fn set_recursive(node: &mut Value, segments: &[&str], value: Value) {
 
 #[cfg(test)]
 mod guard_tests {
-    use super::falsy_not_zero;
+    use super::{bound_value, take_bound};
+    use serde_json::json;
 
-    #[test]
-    fn zero_is_present() {
-        assert!(!falsy_not_zero(Some(0.0)));
+    // out_of_range for a minimum bound of -100.
+    fn below_min(v: f64) -> bool {
+        v < -100.0
     }
 
     #[test]
-    fn missing_is_falsy() {
-        assert!(falsy_not_zero(None));
+    fn missing_takes_the_bound() {
+        assert!(take_bound(None, below_min));
     }
 
     #[test]
-    fn nonzero_is_present() {
-        assert!(!falsy_not_zero(Some(500.0)));
-        assert!(!falsy_not_zero(Some(-5.0)));
+    fn present_zero_is_kept() {
+        assert!(!take_bound(Some(&json!(0)), below_min));
+    }
+
+    #[test]
+    fn in_range_number_is_kept() {
+        assert!(!take_bound(Some(&json!(-50)), below_min));
+    }
+
+    #[test]
+    fn out_of_range_number_takes_the_bound() {
+        assert!(take_bound(Some(&json!(-200)), below_min));
+    }
+
+    #[test]
+    fn falsy_non_number_takes_the_bound() {
+        assert!(take_bound(Some(&json!(null)), below_min));
+        assert!(take_bound(Some(&json!(false)), below_min));
+        assert!(take_bound(Some(&json!("")), below_min));
+    }
+
+    #[test]
+    fn truthy_non_number_is_kept() {
+        assert!(!take_bound(Some(&json!("abc")), below_min));
+        assert!(!take_bound(Some(&json!([])), below_min));
+        assert!(!take_bound(Some(&json!(true)), below_min));
+    }
+
+    #[test]
+    fn small_integral_bound_is_integer() {
+        assert_eq!(bound_value(-2147483648.0), json!(-2147483648_i64));
+    }
+
+    #[test]
+    fn large_bound_stays_float() {
+        // 2**63 exceeds i64 range, so it stays a float Number.
+        assert_eq!(bound_value(2f64.powi(63)), json!(2f64.powi(63)));
     }
 }

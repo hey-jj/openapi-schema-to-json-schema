@@ -77,8 +77,8 @@ use serde_json::Value;
 /// use serde_json::json;
 ///
 /// let out = from_schema(json!({ "type": "integer", "format": "int32" }), &Options::new()).unwrap();
-/// assert_eq!(out["minimum"], json!(-2147483648.0));
-/// assert_eq!(out["maximum"], json!(2147483647.0));
+/// assert_eq!(out["minimum"], json!(-2147483648_i64));
+/// assert_eq!(out["maximum"], json!(2147483647_i64));
 /// ```
 pub fn from_schema(schema: Value, options: &Options) -> Result<Value, Error> {
     let resolved = options::resolve_options(options);
