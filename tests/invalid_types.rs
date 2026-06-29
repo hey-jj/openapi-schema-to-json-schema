@@ -41,6 +41,17 @@ fn valid_types() {
 }
 
 #[test]
+fn falsy_type_passes_strict_validation() {
+    // validateType guards on a truthy type, so an empty string is accepted and
+    // left unchanged.
+    assert_schema(
+        json!({ "type": "" }),
+        &Options::new(),
+        json!({ "$schema": DRAFT4, "type": "" }),
+    );
+}
+
+#[test]
 fn invalid_type_allowed_when_strict_mode_false() {
     let options = Options {
         strict_mode: Some(false),

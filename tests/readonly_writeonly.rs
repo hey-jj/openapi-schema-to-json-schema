@@ -192,6 +192,49 @@ fn not_removing_write_only_props_by_default() {
 }
 
 #[test]
+fn non_true_read_only_value_keeps_the_property() {
+    // The removal check compares against boolean true. A string readOnly does
+    // not remove the property, and the readOnly key is then stripped.
+    assert_schema(
+        json!({
+            "type": "object",
+            "properties": { "a": { "type": "string", "readOnly": "yes" } }
+        }),
+        &remove_read_only(),
+        json!({
+            "$schema": DRAFT4,
+            "type": "object",
+            "properties": { "a": { "type": "string" } }
+        }),
+    );
+}
+
+#[test]
+fn remove_read_only_and_write_only_together() {
+    let options = Options {
+        remove_read_only: Some(true),
+        remove_write_only: Some(true),
+        ..Options::new()
+    };
+    assert_schema(
+        json!({
+            "type": "object",
+            "properties": {
+                "a": { "type": "string", "readOnly": true },
+                "b": { "type": "string", "writeOnly": true },
+                "c": { "type": "string" }
+            }
+        }),
+        &options,
+        json!({
+            "$schema": DRAFT4,
+            "type": "object",
+            "properties": { "c": { "type": "string" } }
+        }),
+    );
+}
+
+#[test]
 fn deep_schema() {
     assert_schema(
         json!({

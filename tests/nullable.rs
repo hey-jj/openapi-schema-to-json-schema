@@ -39,3 +39,23 @@ fn nullable_with_no_type() {
     // nullable keyword is stripped and no type array is created.
     assert_schema_default(json!({ "nullable": true }), json!({ "$schema": DRAFT4 }));
 }
+
+#[test]
+fn nullable_widens_a_null_type() {
+    // A present type of null is not undefined, so the widening still runs and
+    // strict validation accepts the falsy value.
+    assert_schema_default(
+        json!({ "type": null, "nullable": true }),
+        json!({ "$schema": DRAFT4, "type": [null, "null"] }),
+    );
+}
+
+#[test]
+fn nullable_leaves_a_non_array_enum() {
+    // The enum widening only applies to an array enum. A non-array enum is left
+    // untouched while the type still widens.
+    assert_schema_default(
+        json!({ "type": "string", "enum": { "a": 1 }, "nullable": true }),
+        json!({ "$schema": DRAFT4, "type": ["string", "null"], "enum": { "a": 1 } }),
+    );
+}
