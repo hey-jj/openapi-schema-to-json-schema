@@ -97,6 +97,44 @@ fn handles_nested_definition_keywords() {
     );
 }
 
+fn definitions_option() -> Options {
+    Options {
+        definition_keywords: Some(vec!["definitions".to_string()]),
+        ..Options::new()
+    }
+}
+
+#[test]
+fn missing_path_is_left_alone() {
+    // The path resolves to nothing, so the node is unchanged.
+    assert_schema(
+        json!({ "type": "object" }),
+        &definitions_option(),
+        json!({ "type": "object", "$schema": DRAFT4 }),
+    );
+}
+
+#[test]
+fn null_path_becomes_empty_object() {
+    // typeof null is "object" in JS, so the value enters the branch and
+    // convert_properties on null writes back an empty object.
+    assert_schema(
+        json!({ "definitions": null }),
+        &definitions_option(),
+        json!({ "definitions": {}, "$schema": DRAFT4 }),
+    );
+}
+
+#[test]
+fn scalar_path_is_left_alone() {
+    // A scalar at the path is not an object, so it stays as is.
+    assert_schema(
+        json!({ "definitions": 5 }),
+        &definitions_option(),
+        json!({ "definitions": 5, "$schema": DRAFT4 }),
+    );
+}
+
 #[test]
 fn handles_bracket_notation_in_path() {
     // A bracketed segment indexes an array. `defs[0]` reaches the first element
