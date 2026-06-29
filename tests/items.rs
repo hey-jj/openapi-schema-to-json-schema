@@ -21,6 +21,23 @@ fn items() {
 }
 
 #[test]
+fn single_object_items_recurses() {
+    // A single-object items branch recurses into the schema, so nullable widens
+    // the type and example is stripped.
+    assert_schema_default(
+        json!({
+            "type": "array",
+            "items": { "type": "string", "nullable": true, "example": "x" }
+        }),
+        json!({
+            "$schema": DRAFT4,
+            "type": "array",
+            "items": { "type": ["string", "null"] }
+        }),
+    );
+}
+
+#[test]
 fn handles_items_with_invalid_values() {
     assert_schema_default(
         json!({
