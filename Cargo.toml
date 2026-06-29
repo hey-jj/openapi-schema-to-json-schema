@@ -6,5 +6,10 @@ description = "Convert OpenAPI 3.0 schema objects to JSON Schema draft-04"
 license = "MIT"
 repository = "https://github.com/hey-jj/openapi-to-json-schema"
 readme = "README.md"
+keywords = ["openapi", "json-schema", "swagger", "convert", "draft-04"]
+categories = ["data-structures", "parsing"]
 
 [dependencies]
+# serde_json is the JSON value model. The `preserve_order` feature keeps object
+# keys in insertion order so output matches the source library byte for byte.
+serde_json = { version = "1", features = ["preserve_order"] }
