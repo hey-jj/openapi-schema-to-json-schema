@@ -62,7 +62,8 @@ fn convert_schema(schema: Value, options: &ResolvedOptions) -> Result<Value, Err
     convert_format(&mut schema, options);
 
     if options.support_pattern_properties {
-        let has_xpattern = matches!(&schema, Value::Object(m) if m.contains_key("x-patternProperties"));
+        let has_xpattern =
+            matches!(&schema, Value::Object(m) if m.contains_key("x-patternProperties"));
         if has_xpattern {
             schema = convert_pattern_properties(schema, options);
         }
@@ -125,10 +126,7 @@ fn recurse_structs(schema: &mut Value, options: &ResolvedOptions) -> Result<(), 
 /// Each keyword is a dotted path resolved with lodash-style get and set. The
 /// value at the path, when an object or array, is run through
 /// [`convert_properties`] and written back.
-fn convert_definition_keywords(
-    schema: &mut Value,
-    options: &ResolvedOptions,
-) -> Result<(), Error> {
+fn convert_definition_keywords(schema: &mut Value, options: &ResolvedOptions) -> Result<(), Error> {
     for path in &options.definition_keywords {
         let inner = lodash_get(schema, path);
         // JS uses `typeof innerDef === "object"`, true for arrays and null.
@@ -194,18 +192,27 @@ fn convert_properties_and_required(
 ///
 /// Non-object property values are dropped. Properties flagged with a removal
 /// keyword (`readOnly`/`writeOnly` when the matching option is on) are dropped.
-/// A non-object input converts to an empty object.
+/// A scalar or null input converts to an empty object. An array input is walked
+/// by index, matching the source `for ... in` over an array, so object elements
+/// land under their numeric string keys.
 fn convert_properties(value: Value, options: &ResolvedOptions) -> Result<Value, Error> {
     let mut out = Map::new();
-    let Value::Object(props) = value else {
-        // Arrays and scalars and null all yield an empty object, matching the
-        // source guard `!isObject(properties) || !properties` for non-object
-        // map types. Arrays are objects in JS but have no string keys to walk,
-        // so they also produce an empty map here.
-        return Ok(Value::Object(out));
+
+    // Build the (key, value) pairs to walk. The source guard
+    // `!isObject(properties) || !properties` returns early for scalars and null.
+    // Objects walk their keys. Arrays are objects in JS, so they walk index
+    // keys.
+    let entries: Vec<(String, Value)> = match value {
+        Value::Object(props) => props.into_iter().collect(),
+        Value::Array(items) => items
+            .into_iter()
+            .enumerate()
+            .map(|(i, v)| (i.to_string(), v))
+            .collect(),
+        _ => return Ok(Value::Object(out)),
     };
 
-    for (key, property) in props {
+    for (key, property) in entries {
         if !is_object(&property) {
             continue;
         }
@@ -316,7 +323,10 @@ fn convert_format(schema: &mut Value, options: &ResolvedOptions) {
         "float" => clamp_bounds(map, -(2f64.powi(128)), 2f64.powi(128) - 1.0),
         "double" => clamp_bounds(map, -f64::MAX, f64::MAX),
         "byte" => {
-            map.insert("pattern".to_string(), Value::String(BYTE_PATTERN.to_string()));
+            map.insert(
+                "pattern".to_string(),
+                Value::String(BYTE_PATTERN.to_string()),
+            );
         }
         _ => {}
     }
@@ -365,7 +375,9 @@ fn falsy_not_zero(value: Option<f64>) -> bool {
 /// representation. `from_f64` only fails for NaN or infinity, which the bounds
 /// never produce.
 fn float_value(v: f64) -> Value {
-    Number::from_f64(v).map(Value::Number).unwrap_or(Value::Null)
+    Number::from_f64(v)
+        .map(Value::Number)
+        .unwrap_or(Value::Null)
 }
 
 /// Move `x-patternProperties` to `patternProperties` and run the handler.
@@ -386,29 +398,6 @@ fn convert_pattern_properties(schema: Value, options: &ResolvedOptions) -> Value
     match &options.pattern_properties_handler {
         Some(handler) => handler(schema),
         None => default_pattern_properties_handler(schema),
-    }
-}
-
-// `falsy_not_zero` above is written to read close to the source guard. Keep a
-// clear, direct version available for testing the intent.
-#[cfg(test)]
-mod guard_tests {
-    use super::falsy_not_zero;
-
-    #[test]
-    fn zero_is_present() {
-        assert!(!falsy_not_zero(Some(0.0)));
-    }
-
-    #[test]
-    fn missing_is_falsy() {
-        assert!(falsy_not_zero(None));
-    }
-
-    #[test]
-    fn nonzero_is_present() {
-        assert!(!falsy_not_zero(Some(500.0)));
-        assert!(!falsy_not_zero(Some(-5.0)));
     }
 }
 
@@ -454,4 +443,25 @@ fn set_recursive(node: &mut Value, segments: &[&str], value: Value) {
         .entry((*head).to_string())
         .or_insert_with(|| Value::Object(Map::new()));
     set_recursive(child, rest, value);
+}
+
+#[cfg(test)]
+mod guard_tests {
+    use super::falsy_not_zero;
+
+    #[test]
+    fn zero_is_present() {
+        assert!(!falsy_not_zero(Some(0.0)));
+    }
+
+    #[test]
+    fn missing_is_falsy() {
+        assert!(falsy_not_zero(None));
+    }
+
+    #[test]
+    fn nonzero_is_present() {
+        assert!(!falsy_not_zero(Some(500.0)));
+        assert!(!falsy_not_zero(Some(-5.0)));
+    }
 }

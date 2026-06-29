@@ -37,6 +37,24 @@ fn properties_value_is_null() {
 }
 
 #[test]
+fn properties_as_array_walks_index_keys() {
+    // An array `properties` is walked by index, matching JS `for ... in` over
+    // an array. Object elements land under their numeric string keys; non-object
+    // elements are dropped.
+    assert_schema_default(
+        json!({
+            "type": "object",
+            "properties": [{ "type": "string", "example": "x" }, 2, { "type": "integer" }]
+        }),
+        json!({
+            "$schema": DRAFT4,
+            "type": "object",
+            "properties": { "0": { "type": "string" }, "2": { "type": "integer" } }
+        }),
+    );
+}
+
+#[test]
 fn strips_malformed_properties_children() {
     assert_schema_default(
         json!({
