@@ -16,8 +16,8 @@ pub(crate) fn default_pattern_properties_handler(schema: Value) -> Value {
         return schema;
     };
 
-    // JS guard `typeof additProps !== "object"`. Objects and arrays pass. null
-    // also passes the typeof check but never deep-equals a pattern value here.
+    // Only an object or array `additionalProperties` carries a pattern value.
+    // A null passes the container check but never equals a pattern value here.
     let Some(addit) = map.get("additionalProperties").cloned() else {
         return schema;
     };

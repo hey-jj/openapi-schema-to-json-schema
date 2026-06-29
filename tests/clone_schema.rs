@@ -1,7 +1,7 @@
 //! Clone semantics.
 //!
-//! The source circular-reference test has no analogue here. An owned
-//! `serde_json::Value` cannot hold a cycle, so JSON input never cycles.
+//! There is no circular-reference case. An owned `serde_json::Value` cannot
+//! hold a cycle, so JSON input never cycles.
 
 mod common;
 

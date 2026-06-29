@@ -1,8 +1,7 @@
 //! Strict type validation.
 //!
-//! The strictMode:false case is dead in the source because of a nested `it`
-//! that the test runner never registers. It is included here as a real test,
-//! since the behavior it intends is genuine.
+//! Covers both modes. With `strict_mode` on, an unknown `type` is an error.
+//! With `strict_mode` off, the same `type` passes through unchanged.
 
 mod common;
 

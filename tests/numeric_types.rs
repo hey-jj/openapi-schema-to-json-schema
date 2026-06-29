@@ -223,7 +223,7 @@ fn handles_double_format() {
 
 #[test]
 fn double_with_specified_minimum() {
-    // The source golden maximum is Number.MAX_VALUE - 1, which equals f64::MAX.
+    // The double upper bound is the largest finite f64 minus one.
     assert_schema_default(
         json!({ "type": "number", "format": "double", "minimum": 50.5 }),
         json!({

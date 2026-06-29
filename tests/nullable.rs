@@ -42,8 +42,8 @@ fn nullable_with_no_type() {
 
 #[test]
 fn nullable_widens_a_null_type() {
-    // A present type of null is not undefined, so the widening still runs and
-    // strict validation accepts the falsy value.
+    // A present `type: null` is widened, and strict validation accepts the
+    // falsy value.
     assert_schema_default(
         json!({ "type": null, "nullable": true }),
         json!({ "$schema": DRAFT4, "type": [null, "null"] }),

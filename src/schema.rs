@@ -25,10 +25,9 @@ pub(crate) fn convert_from_schema(
 
 /// Convert one node. Recurses into struct keywords and properties.
 ///
-/// Step order matches the source: before-transform hook, struct recursion,
-/// definition keywords, properties and required pruning, type validation,
-/// nullable handling, format handling, pattern properties, keyword stripping,
-/// after-transform hook.
+/// Step order: before-transform hook, struct recursion, definition keywords,
+/// properties and required pruning, type validation, nullable handling, format
+/// handling, pattern properties, keyword stripping, after-transform hook.
 fn convert_schema(schema: Value, options: &ResolvedOptions) -> Result<Value, Error> {
     let mut schema = schema;
 
@@ -126,18 +125,18 @@ fn recurse_structs(schema: &mut Value, options: &ResolvedOptions) -> Result<(), 
 
 /// Convert sub-schemas named under each definition keyword path.
 ///
-/// Each keyword is a dotted path resolved with lodash-style get and set. The
-/// value at the path, when an object or array, is run through
-/// [`convert_properties`] and written back.
+/// Each keyword is a dotted path. The value at the path, when an object or
+/// array, is run through [`convert_properties`] and written back.
 fn convert_definition_keywords(schema: &mut Value, options: &ResolvedOptions) -> Result<(), Error> {
     for path in &options.definition_keywords {
-        let inner = lodash_get(schema, path);
-        // JS uses `typeof innerDef === "object"`, true for arrays and null.
-        // A missing path yields undefined and is skipped.
+        let inner = path_get(schema, path);
+        // Objects, arrays, and null all enter conversion. A null carries no
+        // sub-schemas, so it converts to an empty object. A missing path is
+        // skipped.
         match inner {
             Some(value) if value.is_object() || value.is_array() || value.is_null() => {
                 let converted = convert_properties(value, options)?;
-                lodash_set(schema, path, converted);
+                path_set(schema, path, converted);
             }
             _ => {}
         }
@@ -196,15 +195,12 @@ fn convert_properties_and_required(
 /// Non-object property values are dropped. Properties flagged with a removal
 /// keyword (`readOnly`/`writeOnly` when the matching option is on) are dropped.
 /// A scalar or null input converts to an empty object. An array input is walked
-/// by index, matching the source `for ... in` over an array, so object elements
-/// land under their numeric string keys.
+/// by index, so object elements land under their numeric string keys.
 fn convert_properties(value: Value, options: &ResolvedOptions) -> Result<Value, Error> {
     let mut out = Map::new();
 
-    // Build the (key, value) pairs to walk. The source guard
-    // `!isObject(properties) || !properties` returns early for scalars and null.
-    // Objects walk their keys. Arrays are objects in JS, so they walk index
-    // keys.
+    // Build the (key, value) pairs to walk. Scalars and null return early.
+    // Objects walk their keys. Arrays walk index keys.
     let entries: Vec<(String, Value)> = match value {
         Value::Object(props) => props.into_iter().collect(),
         Value::Array(items) => items
@@ -263,8 +259,7 @@ fn convert_types(schema: &mut Value) {
     if !nullable {
         return;
     }
-    // JS checks `type !== undefined`. A present `type: null` still proceeds,
-    // since null is not undefined.
+    // A missing `type` ends the function. A present `type: null` proceeds.
     let Some(type_value) = map.get("type").cloned() else {
         return;
     };
@@ -326,10 +321,10 @@ fn convert_format(schema: &mut Value, options: &ResolvedOptions) {
 
 /// Set or clamp `minimum` and `maximum` for a numeric format.
 ///
-/// The JS guard per bound is `(!value && value !== 0) || out of range`. The
-/// helper below reads it as: write the bound when the current value is JS-falsy
-/// (and not the number 0) or when it is a number out of range. A present 0, a
-/// present in-range number, or any present non-number value is kept.
+/// Write the bound when the current value is falsy and not the number 0, or
+/// when it is a number out of range. A present 0, a present in-range number, or
+/// any present non-number value is kept. Falsy here follows the truthiness
+/// rules in [`crate::value`]: null, false, 0, and the empty string.
 fn clamp_bounds(map: &mut Map<String, Value>, min: f64, max: f64) {
     if take_bound(map.get("minimum"), |v| v < min) {
         map.insert("minimum".to_string(), bound_value(min));
@@ -342,9 +337,8 @@ fn clamp_bounds(map: &mut Map<String, Value>, min: f64, max: f64) {
 /// Decide whether to overwrite a bound with the format default.
 ///
 /// `out_of_range` tests a present number against the format limit. A missing
-/// value, or a JS-falsy value other than the number 0, takes the default. A
-/// present non-number that is not falsy is kept, since the JS comparison
-/// coerces it and reads false.
+/// value, or a falsy value other than the number 0, takes the default. A
+/// present non-number that is not falsy is kept.
 fn take_bound(current: Option<&Value>, out_of_range: impl Fn(f64) -> bool) -> bool {
     match current {
         None => true,
@@ -391,14 +385,14 @@ fn convert_pattern_properties(schema: Value, options: &ResolvedOptions) -> Value
     }
 }
 
-// ---- lodash get/set over object and array paths ---------------------------
+// ---- path get/set over object and array paths -----------------------------
 
-/// Split a lodash-style path into segments.
+/// Split a path into segments.
 ///
 /// Handles dotted keys and bracket notation: `a.b`, `a[0]`, `a["x"]`, and
-/// `a['x']` all resolve to the same segments lodash uses. A bracketed quoted
-/// key keeps its literal text. A bracketed bare token (an array index) becomes
-/// its digits. Each segment is one object key or one array index.
+/// `a['x']` resolve to the same segments. A bracketed quoted key keeps its
+/// literal text. A bracketed bare token (an array index) becomes its digits.
+/// Each segment is one object key or one array index.
 fn parse_path(path: &str) -> Vec<String> {
     let mut segments = Vec::new();
     let mut current = String::new();
@@ -441,10 +435,10 @@ fn parse_path(path: &str) -> Vec<String> {
     segments
 }
 
-/// Resolve a lodash-style path against a value. Returns a clone of the value at
-/// the path, or None when any segment is missing. Objects index by key, arrays
-/// index by a numeric segment.
-fn lodash_get(root: &Value, path: &str) -> Option<Value> {
+/// Resolve a path against a value. Returns a clone of the value at the path, or
+/// None when any segment is missing. Objects index by key, arrays index by a
+/// numeric segment.
+fn path_get(root: &Value, path: &str) -> Option<Value> {
     let mut current = root;
     for segment in parse_path(path) {
         current = match current {
@@ -456,9 +450,9 @@ fn lodash_get(root: &Value, path: &str) -> Option<Value> {
     Some(current.clone())
 }
 
-/// Write a value at a lodash-style path, creating intermediate objects as
-/// needed. An existing array along the path is indexed by a numeric segment.
-fn lodash_set(root: &mut Value, path: &str, value: Value) {
+/// Write a value at a path, creating intermediate objects as needed. An
+/// existing array along the path is indexed by a numeric segment.
+fn path_set(root: &mut Value, path: &str, value: Value) {
     let segments = parse_path(path);
     set_recursive(root, &segments, value);
 }

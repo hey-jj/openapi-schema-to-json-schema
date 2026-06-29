@@ -11,5 +11,5 @@ categories = ["data-structures", "parsing"]
 
 [dependencies]
 # serde_json is the JSON value model. The `preserve_order` feature keeps object
-# keys in insertion order so output matches the source library byte for byte.
+# keys in insertion order so output is stable and matches the input layout.
 serde_json = { version = "1", features = ["preserve_order"] }

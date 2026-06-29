@@ -38,9 +38,8 @@ fn properties_value_is_null() {
 
 #[test]
 fn properties_as_array_walks_index_keys() {
-    // An array `properties` is walked by index, matching JS `for ... in` over
-    // an array. Object elements land under their numeric string keys; non-object
-    // elements are dropped.
+    // An array `properties` is walked by index. Object elements land under
+    // their numeric string keys. Non-object elements are dropped.
     assert_schema_default(
         json!({
             "type": "object",

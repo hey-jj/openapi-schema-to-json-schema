@@ -1,8 +1,8 @@
 //! Fixture golden for a deeply nested schema.
 //!
-//! The source also checks that `cloneSchema: false` mutates the input in place.
-//! This crate owns its input, so there is no shared input to observe. The
-//! cloneSchema: false case is kept here as an output-equality assertion.
+//! `clone_schema: false` has no observable effect here. This crate owns its
+//! input, so there is no shared input to mutate. The case is kept as an
+//! output-equality assertion.
 
 mod common;
 

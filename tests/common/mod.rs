@@ -17,7 +17,6 @@ pub fn load_fixture(name: &str) -> Value {
 
 /// Assert that converting `input` with `options` deep-equals `expected`.
 ///
-/// This mirrors the source `expect(convert(input, opts)).toEqual(expected)`.
 /// Comparison is on `Value`, which is structural and key-order insensitive for
 /// objects.
 pub fn assert_schema(input: Value, options: &Options, expected: Value) {

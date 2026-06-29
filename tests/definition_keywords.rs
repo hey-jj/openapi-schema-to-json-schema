@@ -116,8 +116,8 @@ fn missing_path_is_left_alone() {
 
 #[test]
 fn null_path_becomes_empty_object() {
-    // typeof null is "object" in JS, so the value enters the branch and
-    // convert_properties on null writes back an empty object.
+    // A null value at the path enters conversion. Converting null yields an
+    // empty object, which is written back.
     assert_schema(
         json!({ "definitions": null }),
         &definitions_option(),
