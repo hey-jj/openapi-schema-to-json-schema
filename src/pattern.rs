@@ -2,6 +2,8 @@
 
 use serde_json::Value;
 
+use crate::value::is_object;
+
 /// Disallow extra properties when one already matches a pattern.
 ///
 /// When `additionalProperties` is an object or array and equals one of the
@@ -14,19 +16,14 @@ pub(crate) fn default_pattern_properties_handler(schema: Value) -> Value {
         return schema;
     };
 
-    // JS guard `typeof additProps !== "object"`. Objects and arrays pass; null
+    // JS guard `typeof additProps !== "object"`. Objects and arrays pass. null
     // also passes the typeof check but never deep-equals a pattern value here.
-    let addit = map.get("additionalProperties").cloned();
-    let is_object_like = matches!(
-        &addit,
-        Some(Value::Object(_)) | Some(Value::Array(_)) | Some(Value::Null)
-    );
-    if !is_object_like {
-        return schema;
-    }
-    let Some(addit) = addit else {
+    let Some(addit) = map.get("additionalProperties").cloned() else {
         return schema;
     };
+    if !is_object(&addit) && !addit.is_null() {
+        return schema;
+    }
 
     let matches_pattern = match map.get("patternProperties") {
         Some(Value::Object(patterns)) => patterns.values().any(|p| *p == addit),

@@ -6,12 +6,7 @@ use crate::consts::{BYTE_PATTERN, DRAFT_04, VALID_OPENAPI_FORMATS, VALID_TYPES};
 use crate::error::Error;
 use crate::options::ResolvedOptions;
 use crate::pattern::default_pattern_properties_handler;
-
-/// True for JSON objects and arrays, matching the source `isObject` helper
-/// (`maybeObj !== null && typeof maybeObj === "object"`).
-fn is_object(value: &Value) -> bool {
-    matches!(value, Value::Object(_) | Value::Array(_))
-}
+use crate::value::{is_falsy, is_object};
 
 /// Convert a schema and write `$schema` on the root.
 ///
@@ -243,17 +238,6 @@ fn validate_type(type_value: &Value) -> Result<(), Error> {
         Err(Error::InvalidType(format!(
             "Type {rendered} is not a valid type"
         )))
-    }
-}
-
-/// JS truthiness for a JSON value. False for null, false, 0, empty string.
-fn is_falsy(value: &Value) -> bool {
-    match value {
-        Value::Null => true,
-        Value::Bool(b) => !b,
-        Value::Number(n) => n.as_f64().map(|f| f == 0.0).unwrap_or(false),
-        Value::String(s) => s.is_empty(),
-        _ => false,
     }
 }
 

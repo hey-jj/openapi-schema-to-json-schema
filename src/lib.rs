@@ -52,6 +52,7 @@ mod options;
 mod parameter;
 mod pattern;
 mod schema;
+mod value;
 
 pub use error::Error;
 pub use options::{

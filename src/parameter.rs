@@ -5,6 +5,7 @@ use serde_json::{Map, Value};
 use crate::error::Error;
 use crate::options::ResolvedOptions;
 use crate::schema::convert_from_schema;
+use crate::value::is_truthy;
 
 /// Convert a parameter or response object.
 ///
@@ -94,15 +95,4 @@ fn convert_from_contents(
         }
     }
     Ok(Value::Object(schemas))
-}
-
-/// JS truthiness for a JSON value. False for null, false, 0, empty string.
-fn is_truthy(value: &Value) -> bool {
-    match value {
-        Value::Null => false,
-        Value::Bool(b) => *b,
-        Value::Number(n) => n.as_f64().map(|f| f != 0.0).unwrap_or(true),
-        Value::String(s) => !s.is_empty(),
-        Value::Array(_) | Value::Object(_) => true,
-    }
 }
