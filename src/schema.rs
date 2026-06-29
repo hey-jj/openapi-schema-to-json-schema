@@ -88,7 +88,7 @@ fn maybe_after_transform(schema: Value, options: &ResolvedOptions) -> Value {
 /// Null values: remove the key. Object values: convert in place. Scalars are
 /// left untouched, so boolean `additionalProperties` survives.
 fn recurse_structs(schema: &mut Value, options: &ResolvedOptions) -> Result<(), Error> {
-    for keyword in options.structs() {
+    for keyword in ResolvedOptions::STRUCTS {
         let Value::Object(map) = schema else {
             return Ok(());
         };
