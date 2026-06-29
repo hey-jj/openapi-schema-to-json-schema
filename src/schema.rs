@@ -383,34 +383,98 @@ fn convert_pattern_properties(schema: Value, options: &ResolvedOptions) -> Value
     }
 }
 
-// ---- lodash get/set over dotted paths -------------------------------------
+// ---- lodash get/set over object and array paths ---------------------------
 
-/// Resolve a dotted path against a value. Returns a clone of the value at the
-/// path, or None when any segment is missing or not an object.
+/// Split a lodash-style path into segments.
+///
+/// Handles dotted keys and bracket notation: `a.b`, `a[0]`, `a["x"]`, and
+/// `a['x']` all resolve to the same segments lodash uses. A bracketed quoted
+/// key keeps its literal text. A bracketed bare token (an array index) becomes
+/// its digits. Each segment is one object key or one array index.
+fn parse_path(path: &str) -> Vec<String> {
+    let mut segments = Vec::new();
+    let mut current = String::new();
+    let mut chars = path.chars().peekable();
+
+    while let Some(c) = chars.next() {
+        match c {
+            '.' => {
+                segments.push(std::mem::take(&mut current));
+            }
+            '[' => {
+                if !current.is_empty() {
+                    segments.push(std::mem::take(&mut current));
+                }
+                let quote = matches!(chars.peek(), Some('"') | Some('\'')).then(|| chars.next());
+                let mut inner = String::new();
+                for ic in chars.by_ref() {
+                    match quote {
+                        Some(Some(q)) if ic == q => break,
+                        None if ic == ']' => break,
+                        _ => inner.push(ic),
+                    }
+                }
+                // Drop the closing bracket after a quoted key.
+                if quote.is_some() {
+                    for ic in chars.by_ref() {
+                        if ic == ']' {
+                            break;
+                        }
+                    }
+                }
+                segments.push(inner);
+            }
+            _ => current.push(c),
+        }
+    }
+    if !current.is_empty() || segments.is_empty() {
+        segments.push(current);
+    }
+    segments
+}
+
+/// Resolve a lodash-style path against a value. Returns a clone of the value at
+/// the path, or None when any segment is missing. Objects index by key, arrays
+/// index by a numeric segment.
 fn lodash_get(root: &Value, path: &str) -> Option<Value> {
     let mut current = root;
-    for segment in path.split('.') {
-        match current {
-            Value::Object(map) => {
-                current = map.get(segment)?;
-            }
+    for segment in parse_path(path) {
+        current = match current {
+            Value::Object(map) => map.get(&segment)?,
+            Value::Array(items) => items.get(segment.parse::<usize>().ok()?)?,
             _ => return None,
-        }
+        };
     }
     Some(current.clone())
 }
 
-/// Write a value at a dotted path, creating intermediate objects as needed.
+/// Write a value at a lodash-style path, creating intermediate objects as
+/// needed. An existing array along the path is indexed by a numeric segment.
 fn lodash_set(root: &mut Value, path: &str, value: Value) {
-    let segments: Vec<&str> = path.split('.').collect();
+    let segments = parse_path(path);
     set_recursive(root, &segments, value);
 }
 
-fn set_recursive(node: &mut Value, segments: &[&str], value: Value) {
+fn set_recursive(node: &mut Value, segments: &[String], value: Value) {
     let (head, rest) = match segments.split_first() {
         Some(parts) => parts,
         None => return,
     };
+
+    // Index into an existing array when the segment is numeric.
+    if let Value::Array(items) = node {
+        if let Ok(index) = head.parse::<usize>() {
+            if let Some(slot) = items.get_mut(index) {
+                if rest.is_empty() {
+                    *slot = value;
+                } else {
+                    set_recursive(slot, rest, value);
+                }
+                return;
+            }
+        }
+    }
+
     if !node.is_object() {
         *node = Value::Object(Map::new());
     }
@@ -418,11 +482,11 @@ fn set_recursive(node: &mut Value, segments: &[&str], value: Value) {
         return;
     };
     if rest.is_empty() {
-        map.insert((*head).to_string(), value);
+        map.insert(head.clone(), value);
         return;
     }
     let child = map
-        .entry((*head).to_string())
+        .entry(head.clone())
         .or_insert_with(|| Value::Object(Map::new()));
     set_recursive(child, rest, value);
 }

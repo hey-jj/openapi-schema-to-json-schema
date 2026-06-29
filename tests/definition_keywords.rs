@@ -96,3 +96,42 @@ fn handles_nested_definition_keywords() {
         }),
     );
 }
+
+#[test]
+fn handles_bracket_notation_in_path() {
+    // A bracketed segment indexes an array. `defs[0]` reaches the first element
+    // and its definitions are converted in place.
+    let input = json!({
+        "defs": [
+            {
+                "sharedDefinition": {
+                    "type": "object",
+                    "properties": {
+                        "foo": { "type": "string", "nullable": true }
+                    }
+                }
+            }
+        ]
+    });
+    let options = Options {
+        definition_keywords: Some(vec!["defs[0]".to_string()]),
+        ..Options::new()
+    };
+    assert_schema(
+        input,
+        &options,
+        json!({
+            "$schema": DRAFT4,
+            "defs": [
+                {
+                    "sharedDefinition": {
+                        "type": "object",
+                        "properties": {
+                            "foo": { "type": ["string", "null"] }
+                        }
+                    }
+                }
+            ]
+        }),
+    );
+}
