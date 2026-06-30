@@ -235,10 +235,6 @@ pub struct ResolvedOptions {
 /// defaults, so an explicit `false` survives.
 pub(crate) fn resolve_options(options: &Options) -> ResolvedOptions {
     let date_to_date_time = options.date_to_date_time.unwrap_or(false);
-    // clone_schema has no effect. Conversion takes the input by value, so the
-    // caller's data is never touched and the output does not depend on this
-    // flag. Reading it keeps the field live without changing behavior.
-    let _ = options.clone_schema.unwrap_or(true);
     let support_pattern_properties = options.support_pattern_properties.unwrap_or(false);
     let keep_not_supported = options.keep_not_supported.clone().unwrap_or_default();
     let definition_keywords = options.definition_keywords.clone().unwrap_or_default();

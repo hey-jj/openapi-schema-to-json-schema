@@ -260,9 +260,6 @@ fn convert_types(schema: &mut Value) {
     let Value::Object(map) = schema else {
         return;
     };
-    if !map.contains_key("type") {
-        return;
-    }
     let nullable = map.get("nullable") == Some(&Value::Bool(true));
     if !nullable {
         return;
