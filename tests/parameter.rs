@@ -3,7 +3,7 @@
 mod common;
 
 use common::DRAFT4;
-use openapi_to_json_schema::{from_parameter, Error, Options};
+use openapi_schema_to_json_schema::{from_parameter, Error, Options};
 use serde_json::json;
 
 #[test]

@@ -6,7 +6,7 @@
 mod common;
 
 use common::{assert_schema, assert_schema_err, load_fixture, DRAFT4};
-use openapi_to_json_schema::{from_schema, Options};
+use openapi_schema_to_json_schema::{from_schema, Options};
 use serde_json::json;
 
 #[test]

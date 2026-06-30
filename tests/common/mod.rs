@@ -2,7 +2,7 @@
 
 #![allow(dead_code)]
 
-use openapi_to_json_schema::{from_schema, Error, Options};
+use openapi_schema_to_json_schema::{from_schema, Error, Options};
 use serde_json::Value;
 
 /// The draft-04 `$schema` value every converted root carries.

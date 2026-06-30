@@ -1,4 +1,4 @@
-# openapi-to-json-schema
+# openapi-schema-to-json-schema
 
 Convert an OpenAPI 3.0 Schema Object into a JSON Schema draft-04 document.
 
@@ -10,14 +10,14 @@ memory. It performs no I/O, no network access, and no `$ref` resolution.
 
 ```toml
 [dependencies]
-openapi-to-json-schema = "0.1"
+openapi-schema-to-json-schema = "0.1"
 serde_json = "1"
 ```
 
 ## Use
 
 ```rust
-use openapi_to_json_schema::{from_schema, Options};
+use openapi_schema_to_json_schema::{from_schema, Options};
 use serde_json::json;
 
 let input = json!({ "type": "string", "nullable": true });
@@ -55,7 +55,7 @@ a map keyed by MIME type, where each value is a JSON Schema with its own
 `$schema`.
 
 ```rust
-use openapi_to_json_schema::{from_parameter, Options};
+use openapi_schema_to_json_schema::{from_parameter, Options};
 use serde_json::json;
 
 let param = json!({

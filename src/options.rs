@@ -28,7 +28,7 @@ pub type PatternPropertiesHandler = Arc<dyn Fn(Value) -> Value + Send + Sync>;
 /// Two ways to set options. Use struct-update syntax against [`Options::new`]:
 ///
 /// ```
-/// # use openapi_to_json_schema::Options;
+/// # use openapi_schema_to_json_schema::Options;
 /// let options = Options {
 ///     support_pattern_properties: Some(true),
 ///     ..Options::new()
@@ -38,7 +38,7 @@ pub type PatternPropertiesHandler = Arc<dyn Fn(Value) -> Value + Send + Sync>;
 /// Or chain the setters, which take plain values and wrap them for you:
 ///
 /// ```
-/// # use openapi_to_json_schema::Options;
+/// # use openapi_schema_to_json_schema::Options;
 /// let options = Options::new()
 ///     .support_pattern_properties(true)
 ///     .strict_mode(false);

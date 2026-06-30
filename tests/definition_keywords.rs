@@ -3,7 +3,7 @@
 mod common;
 
 use common::{assert_schema, assert_schema_default, DRAFT4};
-use openapi_to_json_schema::Options;
+use openapi_schema_to_json_schema::Options;
 use serde_json::json;
 
 fn shared_definitions() -> serde_json::Value {

@@ -29,7 +29,7 @@
 //! # Example
 //!
 //! ```
-//! use openapi_to_json_schema::{from_schema, Options};
+//! use openapi_schema_to_json_schema::{from_schema, Options};
 //! use serde_json::json;
 //!
 //! let input = json!({ "type": "string", "nullable": true });
@@ -75,7 +75,7 @@ use serde_json::Value;
 /// # Example
 ///
 /// ```
-/// use openapi_to_json_schema::{from_schema, Options};
+/// use openapi_schema_to_json_schema::{from_schema, Options};
 /// use serde_json::json;
 ///
 /// let out = from_schema(json!({ "type": "integer", "format": "int32" }), &Options::new()).unwrap();
@@ -104,7 +104,7 @@ pub fn from_schema(schema: Value, options: &Options) -> Result<Value, Error> {
 /// # Example
 ///
 /// ```
-/// use openapi_to_json_schema::{from_parameter, Options};
+/// use openapi_schema_to_json_schema::{from_parameter, Options};
 /// use serde_json::json;
 ///
 /// let param = json!({

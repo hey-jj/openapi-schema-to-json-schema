@@ -7,7 +7,7 @@
 mod common;
 
 use common::load_fixture;
-use openapi_to_json_schema::{from_schema, Options};
+use openapi_schema_to_json_schema::{from_schema, Options};
 
 #[test]
 fn complex_schema() {

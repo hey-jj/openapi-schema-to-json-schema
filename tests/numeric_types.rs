@@ -271,9 +271,9 @@ fn maximum_zero_preserved() {
 
 #[test]
 fn int32_bounds_serialize_as_integers() {
-    let got = openapi_to_json_schema::from_schema(
+    let got = openapi_schema_to_json_schema::from_schema(
         json!({ "type": "integer", "format": "int32" }),
-        &openapi_to_json_schema::Options::new(),
+        &openapi_schema_to_json_schema::Options::new(),
     )
     .unwrap();
     let text = serde_json::to_string(&got).unwrap();
@@ -285,9 +285,9 @@ fn int32_bounds_serialize_as_integers() {
 #[test]
 fn int64_max_bound_is_float_value() {
     // 2**63-1 is not representable in i64 after f64 rounding, so it stays float.
-    let got = openapi_to_json_schema::from_schema(
+    let got = openapi_schema_to_json_schema::from_schema(
         json!({ "type": "integer", "format": "int64" }),
-        &openapi_to_json_schema::Options::new(),
+        &openapi_schema_to_json_schema::Options::new(),
     )
     .unwrap();
     assert_eq!(got["maximum"], json!(2f64.powi(63) - 1.0));

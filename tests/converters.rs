@@ -3,7 +3,7 @@
 mod common;
 
 use common::{assert_schema_default, DRAFT4};
-use openapi_to_json_schema::{from_schema, Error, Options};
+use openapi_schema_to_json_schema::{from_schema, Error, Options};
 use serde_json::json;
 
 #[test]
