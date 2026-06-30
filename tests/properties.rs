@@ -29,6 +29,25 @@ fn properties() {
 }
 
 #[test]
+fn required_name_without_property_is_kept() {
+    // A required name with no `properties` entry is kept. It was never a
+    // property, so conversion did not remove it.
+    assert_schema_default(
+        json!({
+            "type": "object",
+            "required": ["a", "b"],
+            "properties": { "a": { "type": "string" } }
+        }),
+        json!({
+            "$schema": DRAFT4,
+            "type": "object",
+            "required": ["a", "b"],
+            "properties": { "a": { "type": "string" } }
+        }),
+    );
+}
+
+#[test]
 fn properties_value_is_null() {
     assert_schema_default(
         json!({ "type": "object", "properties": null }),

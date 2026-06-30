@@ -147,9 +147,10 @@ fn convert_definition_keywords(schema: &mut Value, options: &ResolvedOptions) ->
 /// Convert `properties` and prune `required`.
 ///
 /// `properties` is replaced by the converted map. A non-object or null value
-/// converts to an empty map, which is then deleted. `required` keeps only names
-/// still present in the converted properties. An empty `required` or empty
-/// `properties` is deleted.
+/// converts to an empty map, which is then deleted. `required` drops only names
+/// whose property was present in the input but removed during conversion. A name
+/// with no property entry is kept. An empty `required` or empty `properties` is
+/// deleted.
 fn convert_properties_and_required(
     schema: &mut Value,
     options: &ResolvedOptions,
@@ -162,19 +163,26 @@ fn convert_properties_and_required(
     }
 
     let props_value = map.remove("properties").unwrap_or(Value::Null);
+    let input_names: Vec<String> = match &props_value {
+        Value::Object(p) => p.keys().cloned().collect(),
+        _ => Vec::new(),
+    };
     let converted = convert_properties(props_value, options)?;
     map.insert("properties".to_string(), converted);
 
-    // Prune required against the converted properties. Only an array required
-    // is touched; any other shape is left as is.
+    // Only an array required is touched. Drop a name only when it was a declared
+    // property that did not survive conversion.
     if let Some(Value::Array(required)) = map.get("required").cloned() {
-        let prop_names: Vec<String> = match map.get("properties") {
+        let kept_names: Vec<String> = match map.get("properties") {
             Some(Value::Object(p)) => p.keys().cloned().collect(),
             _ => Vec::new(),
         };
         let filtered: Vec<Value> = required
             .into_iter()
-            .filter(|key| matches!(key, Value::String(name) if prop_names.contains(name)))
+            .filter(|key| match key {
+                Value::String(name) => kept_names.contains(name) || !input_names.contains(name),
+                _ => false,
+            })
             .collect();
         if filtered.is_empty() {
             map.remove("required");

@@ -20,7 +20,8 @@
 //!   optionally becomes `date-time`.
 //! - Combiner and struct keywords recurse: `allOf`, `anyOf`, `oneOf`, `not`,
 //!   `items`, `additionalProperties`, and `properties`.
-//! - `required` is pruned of names no longer present in `properties`.
+//! - `required` drops names whose property was removed during conversion, and
+//!   keeps names that have no `properties` entry.
 //! - In strict mode, an invalid `type` raises an error.
 //!
 //! The root of the result carries `"$schema": "http://json-schema.org/draft-04/schema#"`.
