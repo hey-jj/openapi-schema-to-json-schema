@@ -1,10 +1,8 @@
 //! Numeric format range injection.
 //!
 //! Injected bounds that are integral and inside i64 range serialize as integer
-//! Numbers, so the int32 limits and the int64 minimum are integers. The int64
-//! maximum rounds to 2**63 in f64, which is outside i64 range, so it stays a
-//! float. The float and double limits stay floats too. A bound the caller
-//! supplies is kept as written.
+//! Numbers. The float and double limits stay floats. A bound the caller supplies
+//! is kept as written.
 
 mod common;
 
@@ -21,16 +19,14 @@ fn max_i31() -> Value {
 fn min_i63() -> Value {
     json!(i64::MIN)
 }
-
-// Limits beyond i64 range emit as floats.
 fn max_i63() -> Value {
-    json!(2f64.powi(63) - 1.0)
+    json!(i64::MAX)
 }
-fn min_f128() -> Value {
-    json!(-(2f64.powi(128)))
+fn min_f32() -> Value {
+    json!(-(f32::MAX as f64))
 }
-fn max_f128() -> Value {
-    json!(2f64.powi(128) - 1.0)
+fn max_f32() -> Value {
+    json!(f32::MAX as f64)
 }
 
 fn num(v: f64) -> Value {
@@ -159,7 +155,7 @@ fn handles_float_format() {
         json!({ "type": "number", "format": "float" }),
         json!({
             "$schema": DRAFT4, "type": "number", "format": "float",
-            "minimum": min_f128(), "maximum": max_f128()
+            "minimum": min_f32(), "maximum": max_f32()
         }),
     );
 }
@@ -170,7 +166,7 @@ fn float_with_specified_minimum() {
         json!({ "type": "number", "format": "float", "minimum": 500 }),
         json!({
             "$schema": DRAFT4, "type": "number", "format": "float",
-            "minimum": 500, "maximum": max_f128()
+            "minimum": 500, "maximum": max_f32()
         }),
     );
 }
@@ -181,7 +177,7 @@ fn float_with_minimum_too_small() {
         json!({ "type": "number", "format": "float", "minimum": num(-(2f64.powi(129))) }),
         json!({
             "$schema": DRAFT4, "type": "number", "format": "float",
-            "minimum": min_f128(), "maximum": max_f128()
+            "minimum": min_f32(), "maximum": max_f32()
         }),
     );
 }
@@ -192,7 +188,7 @@ fn float_with_specified_maximum() {
         json!({ "type": "number", "format": "float", "maximum": 500 }),
         json!({
             "$schema": DRAFT4, "type": "number", "format": "float",
-            "minimum": min_f128(), "maximum": 500
+            "minimum": min_f32(), "maximum": 500
         }),
     );
 }
@@ -203,7 +199,7 @@ fn float_with_maximum_too_big() {
         json!({ "type": "number", "format": "float", "maximum": num(2f64.powi(129)) }),
         json!({
             "$schema": DRAFT4, "type": "number", "format": "float",
-            "minimum": min_f128(), "maximum": max_f128()
+            "minimum": min_f32(), "maximum": max_f32()
         }),
     );
 }
@@ -283,12 +279,11 @@ fn int32_bounds_serialize_as_integers() {
 }
 
 #[test]
-fn int64_max_bound_is_float_value() {
-    // 2**63-1 is not representable in i64 after f64 rounding, so it stays float.
+fn int64_max_bound_is_integer_value() {
     let got = openapi_schema_to_json_schema::from_schema(
         json!({ "type": "integer", "format": "int64" }),
         &openapi_schema_to_json_schema::Options::new(),
     )
     .unwrap();
-    assert_eq!(got["maximum"], json!(2f64.powi(63) - 1.0));
+    assert_eq!(got["maximum"], json!(i64::MAX));
 }

@@ -51,6 +51,14 @@ fn nullable_widens_a_null_type() {
 }
 
 #[test]
+fn nullable_does_not_duplicate_null_type() {
+    assert_schema_default(
+        json!({ "type": "null", "nullable": true }),
+        json!({ "$schema": DRAFT4, "type": ["null"] }),
+    );
+}
+
+#[test]
 fn nullable_leaves_a_non_array_enum() {
     // The enum widening only applies to an array enum. A non-array enum is left
     // untouched while the type still widens.

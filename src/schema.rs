@@ -269,10 +269,11 @@ fn convert_types(schema: &mut Value) {
         return;
     };
 
-    map.insert(
-        "type".to_string(),
-        Value::Array(vec![type_value, Value::String("null".to_string())]),
-    );
+    let mut types = vec![type_value];
+    if !types.iter().any(|item| item == "null") {
+        types.push(Value::String("null".to_string()));
+    }
+    map.insert("type".to_string(), Value::Array(types));
 
     if let Some(Value::Array(items)) = map.get("enum") {
         if !items.iter().any(|v| v.is_null()) {
@@ -307,12 +308,17 @@ fn convert_format(schema: &mut Value, options: &ResolvedOptions) {
         return;
     }
 
-    // Bounds computed as f64, matching the `2 ** n` arithmetic. Integral bounds
-    // within i64 range serialize as integers, the rest as floats.
+    // Integral bounds inside i64 range serialize as integers.
     match format.as_str() {
         "int32" => clamp_bounds(map, -(2f64.powi(31)), 2f64.powi(31) - 1.0),
-        "int64" => clamp_bounds(map, -(2f64.powi(63)), 2f64.powi(63) - 1.0),
-        "float" => clamp_bounds(map, -(2f64.powi(128)), 2f64.powi(128) - 1.0),
+        "int64" => clamp_bounds_with_values(
+            map,
+            i64::MIN as f64,
+            i64::MAX as f64,
+            Value::Number(Number::from(i64::MIN)),
+            Value::Number(Number::from(i64::MAX)),
+        ),
+        "float" => clamp_bounds(map, -(f32::MAX as f64), f32::MAX as f64),
         "double" => clamp_bounds(map, -f64::MAX, f64::MAX),
         "byte" => {
             map.insert(
@@ -331,11 +337,21 @@ fn convert_format(schema: &mut Value, options: &ResolvedOptions) {
 /// any present non-number value is kept. Falsy here follows the truthiness
 /// rules in [`crate::value`]: null, false, 0, and the empty string.
 fn clamp_bounds(map: &mut Map<String, Value>, min: f64, max: f64) {
+    clamp_bounds_with_values(map, min, max, bound_value(min), bound_value(max));
+}
+
+fn clamp_bounds_with_values(
+    map: &mut Map<String, Value>,
+    min: f64,
+    max: f64,
+    min_value: Value,
+    max_value: Value,
+) {
     if take_bound(map.get("minimum"), |v| v < min) {
-        map.insert("minimum".to_string(), bound_value(min));
+        map.insert("minimum".to_string(), min_value);
     }
     if take_bound(map.get("maximum"), |v| v > max) {
-        map.insert("maximum".to_string(), bound_value(max));
+        map.insert("maximum".to_string(), max_value);
     }
 }
 
@@ -358,8 +374,7 @@ fn take_bound(current: Option<&Value>, out_of_range: impl Fn(f64) -> bool) -> bo
 
 /// Build a JSON number for a bound. An integral bound inside i64 range becomes
 /// an integer Number, so it serializes without a fractional part. Bounds beyond
-/// i64 range, such as the int64 maximum and the float and double limits, stay
-/// floats.
+/// i64 range, such as the float and double limits, stay floats.
 fn bound_value(v: f64) -> Value {
     if v.fract() == 0.0 && v >= -(2f64.powi(63)) && v < 2f64.powi(63) {
         return Value::Number(Number::from(v as i64));
